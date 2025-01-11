@@ -1,12 +1,13 @@
-from gpiozero import PWMLED
 from gpiozero import LED
 from gpiozero import Button
-from signal import pause
 from time import sleep
 
-light = PWMLED(17)
+light = LED(17)
 button = Button(2)
 
-light.pulse
 
-pause()
+while True:
+    light.on
+    sleep(1)
+    light.off
+    sleep(1)
