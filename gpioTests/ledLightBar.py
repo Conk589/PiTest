@@ -121,16 +121,18 @@ def stopLoop():
 #Button press handler
 def buttonPressed():
     global loop
-    incrementRef()
+    sleep(.1)
     if loop:
+        incrementRef()
         stopLoop()
         print(f"Mode Stopped")
+    else:
+        incrementRef()
 
 if __name__ == "__main__":
     try:
-        # Assign button actions
-        button.when_activated = buttonPressed
-        
+        button.when_pressed = buttonPressed
+
         print("Program running. Press the button to switch modes.")
 
         # Wait for events
@@ -140,5 +142,5 @@ if __name__ == "__main__":
         print("\nProgram interrupted.")
     finally:
         cleanup()
-    
+        
 
