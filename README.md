@@ -1,2 +1,2 @@
 # PiTest
-Test Code for the Raspberry Pi
+Getting used to writing python with the GPIO and learning how these little devices I got work.
