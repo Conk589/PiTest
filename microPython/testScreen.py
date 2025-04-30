@@ -2,13 +2,13 @@ import machine
 import utime
 
 try:
-    import ili9341
+    import lib.ili9341 as ili9341
 except ImportError:
     print("Error: ili9341.py not found in /lib")
     raise
 
 try:
-    import xpt2046
+    import lib.xpt2046 as xpt2046
 except ImportError:
     print("Error: xpt2046.py not found in /lib")
     raise

@@ -1,5 +1,5 @@
 from machine import Pin, SPI
-from xpt2046 import Touch
+from lib.xpt2046 import Touch
 import time
 
 # Setup SPI and touchscreen

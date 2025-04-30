@@ -1,7 +1,7 @@
 import machine
 import utime
-import ili9341
-import xpt2046
+import lib.ili9341 as ili9341
+import lib.xpt2046 as xpt2046
 
 # Spotify colors (approximated for RGB565)
 SPOTIFY_GREEN = ili9341.color565(29, 185, 84)   # #1DB954
