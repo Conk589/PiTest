@@ -11,8 +11,8 @@ dc = machine.Pin(2, machine.Pin.OUT)
 rst = machine.Pin(33, machine.Pin.OUT)
 backlight = machine.Pin(21, machine.Pin.OUT)
 
-# Initialize display
-display = Display(spi, cs=cs, dc=dc, rst=rst, width=240, height=320, rotation=0)
+# Initialize display (landscape, 320x240, rotation=90)
+display = Display(spi, cs=cs, dc=dc, rst=rst, width=320, height=240, rotation=90)
 backlight.on()
 
 # Startup sequence
@@ -31,22 +31,31 @@ def draw_progress_bar(x, y, width, height, progress, fg_color, bg_color):
     if fill_width > 0:
         display.fill_rectangle(x, y, fill_width, height, fg_color)  # Foreground
 
+def draw_separator(x, y, width):
+    """Draw a horizontal line separator."""
+    display.fill_rectangle(x, y, width, 2, color565(100, 100, 100))  # Gray line
+
 def read_and_display_data():
-    """Read serial data and update display with metrics and progress bars."""
+    """Read serial data and update display with grouped metrics and progress bars."""
     # Initialize display once
     display.clear()
     display.draw_text8x8(10, 10, "System Monitor", color565(255, 255, 255))
-    labels = ["CPU", "RAM", "GPU Usage", "Disk", "Net Sent", "Net Recv", "CPU Temp", "GPU Temp", "CPU Clock"]
-    units = ["%", "%", "%", "%", "MB", "MB", "C", "C", "MHz"]
+    labels = ["CPU", "CPU Temp", "CPU Clock", "GPU Usage", "GPU Temp", "RAM", "Disk", "Net Sent", "Net Recv"]
+    units = ["%", "C", "MHz", "%", "C", "%", "%", "MB", "MB"]
     values = [0.0] * 9
-    y_positions = [30, 48, 66, 84, 102, 120, 138, 156, 174]  # 18-pixel spacing for 9 metrics
+    y_positions = [30, 46, 62, 86, 102, 126, 142, 166, 182]  # 16-pixel spacing within groups, 24 between
+    bar_x = 160  # Moved right to use wider 320-pixel width
 
-    # Draw initial labels
+    # Draw initial labels and separators
     for i, (label, y, unit) in enumerate(zip(labels, y_positions, units)):
         text = f"{label}: {values[i]}{unit}"
         display.draw_text8x8(10, y, text, color565(255, 255, 255))
         if label in ["CPU", "RAM", "GPU Usage"]:
-            draw_progress_bar(120, y, 100, 10, values[i], color565(0, 255, 0), color565(50, 50, 50))
+            draw_progress_bar(bar_x, y, 100, 10, values[i], color565(0, 255, 0), color565(50, 50, 50))
+    # Draw separators between groups
+    draw_separator(10, 78, 300)  # After CPU group (before GPU)
+    draw_separator(10, 118, 300)  # After GPU group (before System)
+    draw_separator(10, 158, 300)  # After System group (before Network)
 
     buffer = ""
     while True:
@@ -65,16 +74,16 @@ def read_and_display_data():
                             # Update only the changed metric
                             text = f"{label}: {value}{unit}"
                             # Clear the text area (8x8 font, estimate width)
-                            display.fill_rectangle(10, y_positions[i], 200, 8, color565(0, 0, 0))
+                            display.fill_rectangle(10, y_positions[i], 140, 8, color565(0, 0, 0))  # Reduced width
                             display.draw_text8x8(10, y_positions[i], text, color565(255, 255, 255))
                             # Update progress bar for CPU, RAM, or GPU Usage
                             if label in ["CPU", "RAM", "GPU Usage"]:
-                                draw_progress_bar(120, y_positions[i], 100, 10, value, color565(0, 255, 0), color565(50, 50, 50))
+                                draw_progress_bar(bar_x, y_positions[i], 100, 10, value, color565(0, 255, 0), color565(50, 50, 50))
                         except Exception as e:
                             print(f"Parse error: {e}")
                 buffer = ""
             else:
                 buffer += char
-        time.sleep(0.005)  # Reduced from 0.01s to 0.005s for faster polling
+        time.sleep(0.005)  # Fast polling
 
 read_and_display_data()

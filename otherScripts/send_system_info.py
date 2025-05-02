@@ -10,14 +10,14 @@ def get_openhardwaremonitor_data():
         sensors = w.Sensor()
         data = {
             "CPU": None,
+            "CPU Temp": None,
+            "CPU Clock": None,
+            "GPU Usage": None,
+            "GPU Temp": None,
             "RAM": None,
             "Disk": None,
             "Net Sent": None,
-            "Net Recv": None,
-            "CPU Temp": None,
-            "GPU Temp": None,
-            "CPU Clock": None,
-            "GPU Usage": None
+            "Net Recv": None
         }
         # Debug: Print all sensors
         print("Available sensors:")
@@ -83,22 +83,22 @@ def send_system_info():
             if data:
                 lines = [
                     f"CPU: {data['CPU']}%",
+                    f"CPU Temp: {data['CPU Temp']}C",
+                    f"CPU Clock: {data['CPU Clock']}MHz",
+                    f"GPU Usage: {data['GPU Usage']}%",
+                    f"GPU Temp: {data['GPU Temp']}C",
                     f"RAM: {data['RAM']}%",
                     f"Disk: {data['Disk']}%",
                     f"Net Sent: {data['Net Sent']}MB",
-                    f"Net Recv: {data['Net Recv']}MB",
-                    f"CPU Temp: {data['CPU Temp']}C",
-                    f"GPU Temp: {data['GPU Temp']}C",
-                    f"CPU Clock: {data['CPU Clock']}MHz",
-                    f"GPU Usage: {data['GPU Usage']}%"
+                    f"Net Recv: {data['Net Recv']}MB"
                 ]
                 for line in lines:
                     ser.write((line + ' |').encode('utf-8'))
                     print(f"Sending: {line} |")
-                    time.sleep(0.05)  # Reduced from 0.5s to 0.05s
+                    time.sleep(0.05)  # Fast update
             else:
                 print("Failed to get system data")
-            time.sleep(1)  # Reduced from 5s to 1s
+            time.sleep(1)  # Fast cycle
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     finally:
