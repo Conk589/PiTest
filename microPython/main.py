@@ -75,7 +75,6 @@ def read_and_display_data():
                 buffer = ""
             else:
                 buffer += char
-        time.sleep(0.01)
-        print("Heartbeat: Loop running")  # Debug
+        time.sleep(0.005)  # Reduced from 0.01s to 0.005s for faster polling
 
 read_and_display_data()

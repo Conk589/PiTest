@@ -95,10 +95,10 @@ def send_system_info():
                 for line in lines:
                     ser.write((line + ' |').encode('utf-8'))
                     print(f"Sending: {line} |")
-                    time.sleep(0.5)
+                    time.sleep(0.05)  # Reduced from 0.5s to 0.05s
             else:
                 print("Failed to get system data")
-            time.sleep(1)  # Update every 1 seconds
+            time.sleep(1)  # Reduced from 5s to 1s
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     finally:
