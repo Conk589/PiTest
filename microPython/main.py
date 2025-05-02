@@ -33,12 +33,22 @@ def draw_progress_bar(x, y, width, height, progress, fg_color, bg_color):
 
 def read_and_display_data():
     """Read serial data and update display with metrics and progress bars."""
+    # Initialize display once
     display.clear()
     display.draw_text8x8(10, 10, "System Monitor", color565(255, 255, 255))
+    labels = ["CPU", "RAM", "GPU Usage", "Disk", "Net Sent", "Net Recv", "CPU Temp", "GPU Temp", "CPU Clock"]
+    units = ["%", "%", "%", "%", "MB", "MB", "C", "C", "MHz"]
+    values = [0.0] * 9
+    y_positions = [30, 48, 66, 84, 102, 120, 138, 156, 174]  # 18-pixel spacing for 9 metrics
+
+    # Draw initial labels
+    for i, (label, y, unit) in enumerate(zip(labels, y_positions, units)):
+        text = f"{label}: {values[i]}{unit}"
+        display.draw_text8x8(10, y, text, color565(255, 255, 255))
+        if label in ["CPU", "RAM", "GPU Usage"]:
+            draw_progress_bar(120, y, 100, 10, values[i], color565(0, 255, 0), color565(50, 50, 50))
+
     buffer = ""
-    y_offset = 30
-    labels = ["CPU", "RAM", "Disk", "Net Sent", "Net Recv"]
-    values = [0.0] * 5
     while True:
         # Non-blocking read from USB-serial (sys.stdin)
         char = sys.stdin.read(1) if sys.stdin in uselect.select([sys.stdin], [], [], 0.1)[0] else None
@@ -47,25 +57,21 @@ def read_and_display_data():
             if char == '|' and buffer:
                 print(f"Received: {buffer} (len: {len(buffer)})")  # Debug
                 # Parse data
-                for i, label in enumerate(labels):
+                for i, (label, unit) in enumerate(zip(labels, units)):
                     if buffer.startswith(label):
                         try:
-                            value = float(buffer.split(':')[1].split('%')[0].strip()) if '%' in buffer else float(buffer.split(':')[1].split('MB')[0].strip())
+                            value = float(buffer.split(':')[1].split(unit)[0].strip())
                             values[i] = value
+                            # Update only the changed metric
+                            text = f"{label}: {value}{unit}"
+                            # Clear the text area (8x8 font, estimate width)
+                            display.fill_rectangle(10, y_positions[i], 200, 8, color565(0, 0, 0))
+                            display.draw_text8x8(10, y_positions[i], text, color565(255, 255, 255))
+                            # Update progress bar for CPU, RAM, or GPU Usage
+                            if label in ["CPU", "RAM", "GPU Usage"]:
+                                draw_progress_bar(120, y_positions[i], 100, 10, value, color565(0, 255, 0), color565(50, 50, 50))
                         except Exception as e:
                             print(f"Parse error: {e}")
-                # Update display
-                display.clear()
-                display.draw_text8x8(10, 10, "System Monitor", color565(255, 255, 255))
-                y_offset = 30
-                for i, (label, value) in enumerate(zip(labels, values)):
-                    text = f"{label}: {value}%"
-                    if label in ["Net Sent", "Net Recv"]:
-                        text = f"{label}: {value}MB"
-                    display.draw_text8x8(10, y_offset, text, color565(255, 255, 255))
-                    if label in ["CPU", "RAM"]:
-                        draw_progress_bar(120, y_offset, 100, 10, value, color565(0, 255, 0), color565(50, 50, 50))
-                    y_offset += 20
                 buffer = ""
             else:
                 buffer += char

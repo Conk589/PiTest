@@ -13,8 +13,17 @@ def get_openhardwaremonitor_data():
             "RAM": None,
             "Disk": None,
             "Net Sent": None,
-            "Net Recv": None
+            "Net Recv": None,
+            "CPU Temp": None,
+            "GPU Temp": None,
+            "CPU Clock": None,
+            "GPU Usage": None
         }
+        # Debug: Print all sensors
+        print("Available sensors:")
+        for sensor in sensors:
+            print(f"Sensor: {sensor.Name}, Type: {sensor.SensorType}, Value: {sensor.Value}")
+        
         for sensor in sensors:
             if sensor.SensorType == "Load" and "CPU Total" in sensor.Name:
                 data["CPU"] = round(sensor.Value, 1)
@@ -22,6 +31,14 @@ def get_openhardwaremonitor_data():
                 data["RAM"] = round(sensor.Value, 1)
             elif sensor.SensorType == "Load" and "Used Disk" in sensor.Name:
                 data["Disk"] = round(sensor.Value, 1)
+            elif sensor.SensorType == "Temperature" and "CPU Package" in sensor.Name:
+                data["CPU Temp"] = round(sensor.Value, 1)
+            elif sensor.SensorType == "Temperature" and "GPU Core" in sensor.Name:
+                data["GPU Temp"] = round(sensor.Value, 1)
+            elif sensor.SensorType == "Clock" and "CPU Core" in sensor.Name:
+                data["CPU Clock"] = round(sensor.Value, 1)
+            elif sensor.SensorType == "Load" and "GPU Core" in sensor.Name:
+                data["GPU Usage"] = round(sensor.Value, 1)
         # Network data via psutil
         net_io = psutil.net_io_counters()
         data["Net Sent"] = round(net_io.bytes_sent / (1024 * 1024), 1)  # MB
@@ -69,7 +86,11 @@ def send_system_info():
                     f"RAM: {data['RAM']}%",
                     f"Disk: {data['Disk']}%",
                     f"Net Sent: {data['Net Sent']}MB",
-                    f"Net Recv: {data['Net Recv']}MB"
+                    f"Net Recv: {data['Net Recv']}MB",
+                    f"CPU Temp: {data['CPU Temp']}C",
+                    f"GPU Temp: {data['GPU Temp']}C",
+                    f"CPU Clock: {data['CPU Clock']}MHz",
+                    f"GPU Usage: {data['GPU Usage']}%"
                 ]
                 for line in lines:
                     ser.write((line + ' |').encode('utf-8'))
@@ -77,7 +98,7 @@ def send_system_info():
                     time.sleep(0.5)
             else:
                 print("Failed to get system data")
-            time.sleep(5)  # Update every 5 seconds
+            time.sleep(1)  # Update every 1 seconds
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     finally:
