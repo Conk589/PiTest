@@ -1,130 +1,75 @@
 import machine
-import utime
 import sys
-import lib.ili9341 as ili9341
+import time
+import uselect
+from ili9341 import Display, color565
 
-# Initialize SPI for ILI9341 display
+# Pin definitions for ILI9341 on CYD (SPI2)
 spi = machine.SPI(2, baudrate=1000000, sck=machine.Pin(14), mosi=machine.Pin(13), miso=machine.Pin(12))
 cs = machine.Pin(15, machine.Pin.OUT)
 dc = machine.Pin(2, machine.Pin.OUT)
 rst = machine.Pin(33, machine.Pin.OUT)
 backlight = machine.Pin(21, machine.Pin.OUT)
-backlight.value(1)
 
 # Initialize display
-try:
-    display = ili9341.Display(spi, cs=cs, dc=dc, rst=rst, width=240, height=320, rotation=90)
-except Exception as e:
-    print(f"Display init error: {e}")
+display = Display(spi, cs=cs, dc=dc, rst=rst, width=240, height=320, rotation=0)
+backlight.on()
 
-# Colors
-WHITE = ili9341.color565(255, 255, 255)
-BLACK = ili9341.color565(0, 0, 0)
-RED = ili9341.color565(255, 0, 0)
+# Startup sequence
+display.clear(color=0)
+display.draw_text8x8(10, 10, "Test Display", color565(255, 255, 255))
+time.sleep(2)
+display.draw_text8x8(10, 30, "ESP32 Running", color565(0, 255, 0))
+display.fill_rectangle(10, 50, 50, 50, color565(255, 0, 0))
+time.sleep(5)
+display.clear()
 
-# Test display
-def test_display():
-    display.clear(BLACK)
-    display.draw_text8x8(10, 10, "Test Display", WHITE, background=BLACK)
-    display.draw_text8x8(10, 20, "ESP32 Running", WHITE, background=BLACK)
-    display.draw_rectangle(10, 40, 100, 20, RED)
-    utime.sleep(5)
+def draw_progress_bar(x, y, width, height, progress, fg_color, bg_color):
+    """Draw a progress bar with percentage fill."""
+    display.fill_rectangle(x, y, width, height, bg_color)  # Background
+    fill_width = int(width * (progress / 100))  # Calculate filled portion
+    if fill_width > 0:
+        display.fill_rectangle(x, y, fill_width, height, fg_color)  # Foreground
 
-# Function to read and display data
 def read_and_display_data():
-    display.clear(BLACK)
-    display.draw_text8x8(10, 10, "Waiting for data...", WHITE, background=BLACK)
+    """Read serial data and update display with metrics and progress bars."""
+    display.clear()
+    display.draw_text8x8(10, 10, "System Monitor", color565(255, 255, 255))
     buffer = ""
-    last_data_displayed = utime.ticks_ms()
-    last_heartbeat = utime.ticks_ms()
-    
-    # Clear serial buffer
-    try:
-        sys.stdin.read(1000)
-        print("Cleared stdin buffer")
-    except Exception as e:
-        print(f"Failed to clear stdin buffer: {e}")
-    
+    y_offset = 30
+    labels = ["CPU", "RAM", "Disk", "Net Sent", "Net Recv"]
+    values = [0.0] * 5
     while True:
-        try:
-            # Heartbeat
-            if utime.ticks_diff(utime.ticks_ms(), last_heartbeat) > 1000:
-                print("Heartbeat: Loop running")
-                last_heartbeat = utime.ticks_ms()
-            
-            # Clear buffer periodically
-            if utime.ticks_diff(utime.ticks_ms(), last_data_displayed) > 5000:
-                try:
-                    sys.stdin.read(1000)
-                    print("Periodic buffer clear")
-                except Exception as e:
-                    print(f"Periodic buffer clear error: {e}")
-            
-            char = None
-            received = False
-            
-            # Non-blocking read
-            try:
-                for _ in range(5):  # Limit attempts
-                    char = sys.stdin.read(1)
-                    if char:
-                        print(f"Char: {repr(char)} (ord: {ord(char)})")
-                        buffer += char
-                        received = True
-                        break
-                    utime.sleep_ms(1)
-            except Exception as e:
-                print(f"Stdin read error: {e}")
-            
-            if received:
-                display.clear(BLACK)
-                display_text = buffer[-10:] if len(buffer) > 10 else buffer
-                print(f"Displaying raw: {display_text}")
-                display.draw_text8x8(10, 10, display_text, WHITE, background=BLACK)
-                last_data_displayed = utime.ticks_ms()
-                
-                if char == '\n' or len(buffer) >= 100:
-                    line = buffer.strip()
-                    print(f"Received: {line} (len: {len(line)})")
-                    
-                    display.clear(BLACK)
-                    lines = line.split('\n')
-                    y_position = 10
-                    for text in lines:
-                        if text:
-                            if len(text) > 20:
-                                text = text[:20]
-                            print(f"Displaying: {text} at y={y_position}")
-                            display.draw_text8x8(10, y_position, text, WHITE, background=BLACK)
-                            y_position += 10
-                            if y_position > 300:
-                                break
-                    buffer = ""
-                    last_data_displayed = utime.ticks_ms()
-            
-            # Status message
-            if utime.ticks_diff(utime.ticks_ms(), last_data_displayed) > 15000:
-                display.clear(BLACK)
-                display.draw_text8x8(10, 10, "No data received", RED, background=BLACK)
-                print("Displayed: No data received")
-                last_data_displayed = utime.ticks_ms()
-        
-        except Exception as e:
-            print(f"Error reading data: {e}")
-            display.clear(BLACK)
-            display.draw_text8x8(10, 10, f"Error: {str(e)[:10]}", RED, background=BLACK)
-            utime.sleep(2)
-            last_data_displayed = utime.ticks_ms()
-        
-        utime.sleep_ms(10)
+        # Non-blocking read from USB-serial (sys.stdin)
+        char = sys.stdin.read(1) if sys.stdin in uselect.select([sys.stdin], [], [], 0.1)[0] else None
+        if char:
+            print(f"Char: {repr(char)} (ord: {ord(char)})")  # Debug
+            if char == '|' and buffer:
+                print(f"Received: {buffer} (len: {len(buffer)})")  # Debug
+                # Parse data
+                for i, label in enumerate(labels):
+                    if buffer.startswith(label):
+                        try:
+                            value = float(buffer.split(':')[1].split('%')[0].strip()) if '%' in buffer else float(buffer.split(':')[1].split('MB')[0].strip())
+                            values[i] = value
+                        except Exception as e:
+                            print(f"Parse error: {e}")
+                # Update display
+                display.clear()
+                display.draw_text8x8(10, 10, "System Monitor", color565(255, 255, 255))
+                y_offset = 30
+                for i, (label, value) in enumerate(zip(labels, values)):
+                    text = f"{label}: {value}%"
+                    if label in ["Net Sent", "Net Recv"]:
+                        text = f"{label}: {value}MB"
+                    display.draw_text8x8(10, y_offset, text, color565(255, 255, 255))
+                    if label in ["CPU", "RAM"]:
+                        draw_progress_bar(120, y_offset, 100, 10, value, color565(0, 255, 0), color565(50, 50, 50))
+                    y_offset += 20
+                buffer = ""
+            else:
+                buffer += char
+        time.sleep(0.01)
+        print("Heartbeat: Loop running")  # Debug
 
-# Main program
-try:
-    print("Booting...")
-    utime.sleep(5)
-    test_display()
-    read_and_display_data()
-except Exception as e:
-    print(f"Fatal error: {e}")
-    display.clear(BLACK)
-    display.draw_text8x8(10, 10, f"Fatal: {str(e)[:10]}", RED, background=BLACK)
+read_and_display_data()
