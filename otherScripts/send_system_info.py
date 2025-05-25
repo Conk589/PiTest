@@ -98,7 +98,7 @@ def send_system_info():
                     time.sleep(0.05)  # Fast update
             else:
                 print("Failed to get system data")
-            time.sleep(1)  # Fast cycle
+            time.sleep(.5)  # Fast cycle
     except serial.SerialException as e:
         print(f"Serial error: {e}")
     finally:
