@@ -12,7 +12,8 @@ rst = machine.Pin(33, machine.Pin.OUT)
 backlight = machine.Pin(21, machine.Pin.OUT)
 
 # Initialize display (landscape, 320x240, rotation=90)
-display = Display(spi, cs=cs, dc=dc, rst=rst, width=320, height=240, rotation=90)
+# Printed a new display stand which makes me have to change rotation to 180
+display = Display(spi, cs=cs, dc=dc, rst=rst, width=240, height=320, rotation=180)
 backlight.on()
 
 # Startup sequence
